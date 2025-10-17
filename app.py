@@ -8,7 +8,6 @@ from docx.enum.table import WD_ALIGN_VERTICAL
 from datetime import datetime
 import io
 
-
 # --- Core Logic from your script ---
 # (Slightly adapted to work with Streamlit's file objects)
 
@@ -27,7 +26,6 @@ def load_schedule_data(uploaded_file):
         st.error(f"Error reading the file: {e}")
         return None
 
-
 def parse_time(time_str):
     if pd.isna(time_str) or time_str == '':
         return None
@@ -39,13 +37,12 @@ def parse_time(time_str):
             hours = int(parts[0])
             minutes = int(parts[1])
         else:
-            time_str = time_str.zfill(4)  # Pad with leading zero if needed e.g. 930 -> 0930
+            time_str = time_str.zfill(4) # Pad with leading zero if needed e.g. 930 -> 0930
             hours = int(time_str[:-2])
             minutes = int(time_str[-2:])
         return hours * 60 + minutes
     except:
         return None
-
 
 def format_time_12hr(time_str):
     if pd.isna(time_str) or time_str == '':
@@ -53,20 +50,17 @@ def format_time_12hr(time_str):
     time_obj = datetime.strptime(str(int(float(time_str))).zfill(4), '%H%M')
     return time_obj.strftime('%I:%M %p')
 
-
 def get_day_of_week(row):
     days = []
-    for day_char, day_full in [('M', 'Monday'), ('T', 'Tuesday'), ('W', 'Wednesday'), ('R', 'Thursday'),
-                               ('F', 'Friday')]:
+    for day_char, day_full in [('M', 'Monday'), ('T', 'Tuesday'), ('W', 'Wednesday'), ('R', 'Thursday'), ('F', 'Friday')]:
         if row.get(day_char) == day_char:
             days.append(day_full)
     return days
 
-
 def process_schedule_data(df):
     room_schedule = {}
     required_columns = ['BLDG', 'ROOM', 'BEGIN', 'END', 'SUBJ', 'CRSE #', 'TITLE', 'LAST NAME', 'M', 'T', 'W', 'R', 'F']
-
+    
     # Check for missing columns
     missing_cols = [col for col in required_columns if col not in df.columns]
     if missing_cols:
@@ -83,7 +77,7 @@ def process_schedule_data(df):
         room_name = f"{row['BLDG']} {row['ROOM']}"
         begin_time = parse_time(row['BEGIN'])
         end_time = parse_time(row['END'])
-
+        
         if begin_time is None or end_time is None:
             continue
 
@@ -93,8 +87,8 @@ def process_schedule_data(df):
             if room_name not in room_schedule[day]:
                 room_schedule[day][room_name] = []
 
-            is_morning = begin_time < 720  # 12:00 PM in minutes
-
+            is_morning = begin_time < 720 # 12:00 PM in minutes
+            
             room_schedule[day][room_name].append({
                 'Begin': format_time_12hr(row['BEGIN']),
                 'End': format_time_12hr(row['END']),
@@ -104,7 +98,7 @@ def process_schedule_data(df):
                 'BeginMinutes': begin_time,
                 'IsMorning': is_morning
             })
-
+            
     # Sort entries by time
     for day in room_schedule:
         for room in room_schedule[day]:
@@ -115,10 +109,10 @@ def process_schedule_data(df):
 def create_room_use_chart(room_schedule):
     doc = Document()
     doc.add_heading('Classroom Use Chart', 0)
-
+    
     days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
     all_rooms = sorted(list(set(room for day_rooms in room_schedule.values() for room in day_rooms.keys())))
-
+    
     df_data = []
     for day in days_of_week:
         row_data = {'Day': day}
@@ -126,12 +120,12 @@ def create_room_use_chart(room_schedule):
             for room in all_rooms:
                 row_data[room] = room_schedule[day].get(room, [])
         else:
-            for room in all_rooms:
+             for room in all_rooms:
                 row_data[room] = []
         df_data.append(row_data)
-
+        
     df_chart = pd.DataFrame(df_data)
-
+    
     if df_chart.empty:
         doc.add_paragraph("No schedule data was processed to create a chart.")
         return doc
@@ -177,65 +171,35 @@ def create_room_use_chart(room_schedule):
                         run.font.color.rgb = RGBColor(0, 0, 0)
     return doc
 
-
 # --- Streamlit App UI ---
 
-st.set_page_config(page_title="Class Schedule to Room Chart Converter", layout="wide")
+st.set_page_config(page_title="Bio Room Use Chart Generator", layout="wide")
 
-st.title("Class Schedule to Room Use Chart Converter")
-st.write(
-    "This tool helps convert a class schedule from a CSV or Excel file into a formatted Room Use Chart in a Word document.")
-
-# Template data for download
-template_csv = """SUBJ,CRSE #,SEC #,TITLE,ATTRIBUTE,UNITS,M,T,W,R,F,BEGIN,END,BLDG,ROOM,ENROLLMENT,LAST NAME,FIRST NAME
-"""
-
-st.sidebar.header("Instructions")
-with st.sidebar.expander("Click here to see how to use this app", expanded=True):
-    st.markdown("""
-    **Step 1: Get the Template**
-    - Download the required template file. This ensures your data is in the correct format.
-
-    **Step 2: Prepare Your Data**
-    - Open the downloaded template (`Template_Schedule.csv`) in Excel or any spreadsheet software.
-    - **Crucial:** Copy your class schedule data into the appropriate columns. The column headers in your file **must exactly match** the template headers.
-
-    **Step 3: Upload Your File**
-    - Save your edited file as either CSV or Excel.
-    - Drag and drop or browse to upload your file using the uploader below.
-
-    **Step 4: Download Your Chart**
-    - Once the file is processed, a "Download Word Document" button will appear. Click it to get your room use chart.
-    """)
-
-st.sidebar.download_button(
-    label="Download Template CSV",
-    data=template_csv,
-    file_name="Template_Schedule.csv",
-    mime="text/csv",
-)
+st.title("Bio Room Use Chart Generator for Dept Chair")
+st.write("This tool converts a class schedule into a Room Use Chart.")
 
 st.header("Upload Your Schedule File")
 uploaded_file = st.file_uploader(
     "Upload your class schedule (CSV or Excel)",
-    type=['csv', 'xlsx', 'xls']
+    type=['csv', 'xlsx', 'xls'],
+    label_visibility="collapsed"
 )
 
+# --- File Processing Logic ---
 if uploaded_file is not None:
     with st.spinner('Processing your file...'):
         df = load_schedule_data(uploaded_file)
-
+        
         if df is not None:
             room_schedule = process_schedule_data(df)
-
+            
             if room_schedule:
                 st.success("File processed successfully! Your document is ready for download.")
-
-                # Create and save the document to a memory buffer
+                
                 doc = create_room_use_chart(room_schedule)
                 bio = io.BytesIO()
                 doc.save(bio)
-
+                
                 st.download_button(
                     label="Download Word Document",
                     data=bio.getvalue(),
@@ -243,5 +207,39 @@ if uploaded_file is not None:
                     mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 )
             else:
-                st.warning(
-                    "Could not generate a chart. This might be due to missing data or an issue with the file format. Please check your file and try again.")
+                st.warning("Could not generate a chart. Please check that your file contains the correct data and column headers.")
+
+# --- Instructions Section ---
+st.markdown("---") 
+
+st.header("How to Use This App")
+
+# Template data for download button
+template_csv = """SUBJ,CRSE #,SEC #,TITLE,ATTRIBUTE,UNITS,M,T,W,R,F,BEGIN,END,BLDG,ROOM,ENROLLMENT,LAST NAME,FIRST NAME
+"""
+
+st.markdown("""
+**Step 1: Get the Template**
+- Click the button below to download the required template. This ensures your data is in the correct format.
+""")
+
+st.download_button(
+   label="Download Template CSV",
+   data=template_csv,
+   file_name="Template_Schedule.csv",
+   mime="text/csv",
+)
+
+st.markdown("""
+**Step 2: Prepare Your Data**
+- Open the downloaded template (`Template_Schedule.csv`) in Excel or any spreadsheet software.
+- **Crucial:** Copy your class schedule data into the appropriate columns. The column headers in your file **must exactly match** the template headers.
+
+**Step 3: Upload Your File**
+- Save your edited file as either CSV or Excel.
+- Drag and drop or browse to upload your file using the uploader at the top of the page.
+
+**Step 4: Download Your Chart**
+- If the file is processed successfully, a blue **"Download Word Document"** button will appear at the top of the page. Click it to get your room use chart.
+""")
+
