@@ -175,10 +175,9 @@ def create_room_use_chart(room_schedule):
 
 st.set_page_config(page_title="Bio Room Use Chart Generator", layout="wide")
 
-st.title("Bio Room Use Chart Generator for Dept Chair")
-st.write("This tool converts a class schedule into a Room Use Chart.")
+st.title("🧪 Room Use Chart Generator for Bio Dept Chair")
 
-st.header("Upload Your Schedule File")
+st.header("Upload Class Schedule File (.xlsx or .csv")
 uploaded_file = st.file_uploader(
     "Upload your class schedule (CSV or Excel)",
     type=['csv', 'xlsx', 'xls'],
@@ -232,14 +231,15 @@ st.download_button(
 
 st.markdown("""
 **Step 2: Prepare Your Data**
-- Open the downloaded template (`Template_Schedule.csv`) in Excel or any spreadsheet software.
-- **Crucial:** Copy your class schedule data into the appropriate columns. The column headers in your file **must exactly match** the template headers.
+- Open the downloaded template in Excel.
+- ❗Copy your class schedule data into the appropriate columns. The data type in each column MUST match the column headers. ❗
 
 **Step 3: Upload Your File**
 - Save your edited file as either CSV or Excel.
-- Drag and drop or browse to upload your file using the uploader at the top of the page.
+- Upload your file using the uploader at the top of the page.
 
 **Step 4: Download Your Chart**
 - If the file is processed successfully, a blue **"Download Word Document"** button will appear at the top of the page. Click it to get your room use chart.
 """)
+
 
