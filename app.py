@@ -29,6 +29,7 @@ def abbreviate_title(title):
     if pd.isna(title):
         return ''
     title = str(title)
+    # Comprehensive dictionary of replacements
     replacements = {
         'Anatomy & Physiology': 'A & P',
         'Bioenergetics and Systems': 'Bioenergetics',
@@ -56,7 +57,10 @@ def abbreviate_title(title):
         'Laboratory': '',
         'Lab': ''
     }
-    for old, new in replacements.items():
+    # Iterate through keys sorted by length (longest first) to handle overlaps
+    # e.g., ensures "Anatomy & Physiology II" is replaced before "Anatomy & Physiology"
+    for old in sorted(replacements, key=len, reverse=True):
+        new = replacements[old]
         title = title.replace(old, new)
     return title
 
@@ -234,7 +238,7 @@ def create_room_use_chart(room_schedule):
             
             if val:
                 for idx, v in enumerate(val):
-                    if idx > 0: para.add_run("\n")
+                    if idx > 0: para.add_run("\n\n")
                     
                     begin = format_time_condensed(v['Begin'])
                     end = format_time_condensed(v['End'])
