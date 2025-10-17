@@ -30,21 +30,31 @@ def abbreviate_title(title):
         return ''
     title = str(title)
     replacements = {
-        'Anatomy & Physiology II': 'A & P II',
-        'Earth/Life Sci for Educators': 'Life Sci Ed',
-        'Biology Capstone Seminar': 'Capstone',
-        'Genomes and Evolution Lab': 'Genome Evol L',
-        'Genomes and Evolution': 'Genome Evol',
-        'Bioenergetics and Systems Lab': 'Bioenergetics L',
+        'Anatomy & Physiology': 'A & P',
         'Bioenergetics and Systems': 'Bioenergetics',
+        'Genomes and Evolution': 'Genome Evol',
         'Medical Microbiology': 'Med Micro',
+        'Earth/Life Sci for Educators': 'Life Sci Ed',
+        'Biostatistics': 'Biostats',
+        'Biology Capstone Seminar': 'Capstone',
+        'Insect Biology': 'Insect Bio',
         'Science in the Public Domain': 'SCI Pub Dom',
+        'Ecological Community:San Diego': 'Ecol Comm',
         'Research Methods': 'Res Meth',
-        'Ecology of Communities': 'Ecol Comm',
-        'Cell Physiology Lab': 'Cell Phys L',
-        'Molecular Techniques': 'Molec Tech',
-        'Life’s Changes & Challenges': 'Life Change Bio',
-        'Comparative Anatomy': 'Comp Anat'
+        'Cell Physiology': 'Cell Phys',
+        'Vertebrate Physiology': 'Vert Phys',
+        'Microbiology': 'Micro',
+        'Research Project': 'Res Proj',
+        'Techniques: Molecular Biology': 'Molec Tech',
+        'Comp. Anat. of Vertebrates': 'Comp An Vert',
+        'Comparative Anatomy (Linked with Human Evolution)': 'Comp Ant (linked)',
+        'Invertebrate Zoology': 'Invert Zoo',
+        'Peoples, Plagues and Microbes': 'Ppl Plag Micro',
+        'Ecol Evol Infectious Disease': 'EEID',
+        'Life Changing Biology': 'Life Change Bio',
+        'Immunology': 'Immuno',
+        'Laboratory': '',
+        'Lab': ''
     }
     for old, new in replacements.items():
         title = title.replace(old, new)
@@ -153,27 +163,14 @@ def create_room_use_chart(room_schedule):
         sec.left_margin = Inches(0.5)
         sec.right_margin = Inches(0.5)
 
-    # Title
-    heading = doc.add_heading('Room Use Chart for the Biology Laboratories', 0)
-    heading.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    for run in heading.runs:
-        run.font.name = 'Times New Roman'
-        run.font.size = Pt(14)
-        run.font.bold = True
-
-    # Legend
-    p_legend = doc.add_paragraph()
-    p_legend.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    run_b = p_legend.add_run('B = Morning  ')
-    run_b.font.name = 'Times New Roman'
-    run_b.font.size = Pt(10)
-    run_b.bold = True
-    run_b.font.color.rgb = RGBColor(0, 0, 255)
-    run_g = p_legend.add_run('G = Afternoon')
-    run_g.font.name = 'Times New Roman'
-    run_g.font.size = Pt(10)
-    run_g.bold = True
-    run_g.font.color.rgb = RGBColor(0, 128, 0)
+    # Title (as a formatted paragraph to avoid underline)
+    p_title = doc.add_paragraph()
+    p_title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run_title = p_title.add_run('Room Use Chart for the Biology Laboratories')
+    font_title = run_title.font
+    font_title.name = 'Times New Roman'
+    font_title.size = Pt(20)
+    font_title.bold = True
     
     # Table
     days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
@@ -184,20 +181,29 @@ def create_room_use_chart(room_schedule):
     hdr_cells = table.rows[0].cells
     hdr_cells[0].width = Inches(1.0)
     
-    # Table Header Content
+    # Table Header Content with colored legend
     p_hdr_legend = hdr_cells[0].paragraphs[0]
     p_hdr_legend.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    run_b_hdr = p_hdr_legend.add_run('B=Morning\nG=Afternoon')
-    run_b_hdr.font.name = 'Times New Roman'
-    run_b_hdr.font.size = Pt(9)
-    run_b_hdr.bold = True
+    run_b_hdr = p_hdr_legend.add_run('B=Morning\n')
+    font_b_hdr = run_b_hdr.font
+    font_b_hdr.name = 'Times New Roman'
+    font_b_hdr.size = Pt(9)
+    font_b_hdr.bold = True
+    font_b_hdr.color.rgb = RGBColor(0, 0, 255)
+    run_g_hdr = p_hdr_legend.add_run('G=Afternoon')
+    font_g_hdr = run_g_hdr.font
+    font_g_hdr.name = 'Times New Roman'
+    font_g_hdr.size = Pt(9)
+    font_g_hdr.bold = True
+    font_g_hdr.color.rgb = RGBColor(0, 128, 0)
+
 
     for i, col_name in enumerate(all_rooms, 1):
         p_hdr = hdr_cells[i].paragraphs[0]
         p_hdr.alignment = WD_ALIGN_PARAGRAPH.CENTER
         run = p_hdr.add_run(col_name)
         run.font.name = 'Times New Roman'
-        run.font.size = Pt(11)
+        run.font.size = Pt(20)
         run.font.bold = True
         hdr_cells[i].width = Inches(1.25)
 
@@ -208,13 +214,23 @@ def create_room_use_chart(room_schedule):
         p_day.alignment = WD_ALIGN_PARAGRAPH.CENTER
         run_day = p_day.add_run(day[:3])
         run_day.font.name = 'Times New Roman'
-        run_day.font.size = Pt(10)
+        run_day.font.size = Pt(20)
         run_day.bold = True
         
         for j, room_name in enumerate(all_rooms, 1):
             val = room_schedule.get(day, {}).get(room_name, [])
             para = row_cells[j].paragraphs[0]
             para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            
+            # Set vertical alignment
+            morning = [v for v in val if v['IsMorning']]
+            afternoon = [v for v in val if not v['IsMorning']]
+            if len(morning) == 0 and len(afternoon) == 1:
+                row_cells[j].vertical_alignment = WD_ALIGN_VERTICAL.BOTTOM
+            elif len(afternoon) == 0 and len(morning) == 1:
+                row_cells[j].vertical_alignment = WD_ALIGN_VERTICAL.TOP
+            else:
+                row_cells[j].vertical_alignment = WD_ALIGN_VERTICAL.CENTER
             
             if val:
                 for idx, v in enumerate(val):
