@@ -320,7 +320,7 @@ if st.session_state.file_valid and st.session_state.chart_data is None:
             room_schedule = process_schedule_data(st.session_state.df_loaded)
             if room_schedule:
                 doc = create_room_use_chart(room_schedule)
-                bio = io.BytesO()
+                bio = io.BytesIO()
                 doc.save(bio)
                 st.session_state.chart_data = bio.getvalue()
                 st.success("Chart generated!")
@@ -365,5 +365,6 @@ st.markdown(f"""
 - Click the **"Generate Room Chart"** button.
 - Once generated, click the **"Download Word Document"** button to download the room chart.
 """)
+
 
 
