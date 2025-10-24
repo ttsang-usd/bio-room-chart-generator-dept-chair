@@ -9,6 +9,7 @@ from docx.enum.section import WD_ORIENT
 from datetime import datetime
 import io
 
+
 # --- Helper Functions to match original formatting ---
 
 def format_time_condensed(time_str):
@@ -23,6 +24,7 @@ def format_time_condensed(time_str):
         return formatted_time
     except (ValueError, TypeError):
         return ''
+
 
 def abbreviate_title(title):
     """Shortens course titles to match the original document's format."""
@@ -64,6 +66,7 @@ def abbreviate_title(title):
         title = title.replace(old, new)
     return title
 
+
 def correct_instructor_name(name):
     """Corrects specific instructor names to match the original doc."""
     if pd.isna(name): return ''
@@ -71,7 +74,7 @@ def correct_instructor_name(name):
     corrections = {
         'NYHOLT DE PRADA': 'PRADA',
         'RECART GONZALEZ': 'RECART-GONZALEZ',
-        'FLEMING-DAVIES': 'FLEMING-DAVIES' # Ensures consistent formatting
+        'FLEMING-DAVIES': 'FLEMING-DAVIES'  # Ensures consistent formatting
     }
     return corrections.get(name, name)
 
@@ -93,6 +96,7 @@ def load_schedule_data(uploaded_file):
         st.error(f"Error reading the file: {e}")
         return None
 
+
 def parse_time(time_str):
     if pd.isna(time_str) or time_str == '': return None
     try:
@@ -103,29 +107,47 @@ def parse_time(time_str):
     except:
         return None
 
+
 def get_day_of_week(row):
     days = []
-    for day_char, day_full in [('M', 'Monday'), ('T', 'Tuesday'), ('W', 'Wednesday'), ('R', 'Thursday'), ('F', 'Friday')]:
+    for day_char, day_full in [('M', 'Monday'), ('T', 'Tuesday'), ('W', 'Wednesday'), ('R', 'Thursday'),
+                               ('F', 'Friday')]:
         if str(row.get(day_char)).strip() == day_char:
             days.append(day_full)
     return days
 
+
 def process_schedule_data(df):
     room_schedule = {}
     required_columns = ['BLDG', 'ROOM', 'BEGIN', 'END', 'SUBJ', 'CRSE #', 'TITLE', 'LAST NAME', 'M', 'T', 'W', 'R', 'F']
-    
+
     missing_cols = [col for col in required_columns if col not in df.columns]
     if missing_cols:
         st.error(f"The uploaded file is missing the following required columns: {', '.join(missing_cols)}")
         return None
 
     df_cleaned = df.dropna(subset=['BLDG', 'ROOM', 'BEGIN', 'END'])
-    df_cleaned['Course'] = df_cleaned['SUBJ'].astype(str) + df_cleaned['CRSE #'].astype(str)
+
+    # --- START: Bug Fix ---
+    # The .copy() prevents a SettingWithCopyWarning
+    df_cleaned = df_cleaned.copy() 
+    
+    # Strip whitespace from key columns that will be used as strings.
+    # This was the cause of the bug: " 320H" and "SCST " / " 227"
+    # were not being processed correctly.
+    strip_cols = ['BLDG', 'ROOM', 'SUBJ', 'CRSE #', 'LAST NAME', 'M', 'T', 'W', 'R', 'F']
+    for col in strip_cols:
+        if col in df_cleaned.columns:
+            df_cleaned[col] = df_cleaned[col].astype(str).str.strip()
+    # --- END: Bug Fix ---
+
+    df_cleaned['Course'] = df_cleaned['SUBJ'] + df_cleaned['CRSE #'] # We can now directly concatenate
     df_cleaned['Instructor'] = df_cleaned['LAST NAME'].apply(correct_instructor_name)
     df_cleaned['Days'] = df_cleaned.apply(get_day_of_week, axis=1)
 
     for _, row in df_cleaned.iterrows():
         try:
+            # This logic will now work, as "SCST " is "SCST" and " 227" is "227"
             room_name = f"{row['BLDG'].replace('SCST', 'ST')}{int(float(row['ROOM']))}"
         except (ValueError, TypeError):
             continue
@@ -135,7 +157,7 @@ def process_schedule_data(df):
         for day in row['Days']:
             if day not in room_schedule: room_schedule[day] = {}
             if room_name not in room_schedule[day]: room_schedule[day][room_name] = []
-            
+
             room_schedule[day][room_name].append({
                 'Begin': row['BEGIN'],
                 'End': row['END'],
@@ -145,7 +167,7 @@ def process_schedule_data(df):
                 'BeginMinutes': begin_time,
                 'IsMorning': begin_time < 720
             })
-            
+
     for day in room_schedule:
         for room in room_schedule[day]:
             room_schedule[day][room].sort(key=lambda x: x['BeginMinutes'])
@@ -175,16 +197,16 @@ def create_room_use_chart(room_schedule):
     font_title.name = 'Times New Roman'
     font_title.size = Pt(20)
     font_title.bold = True
-    
+
     # Table
     days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
     all_rooms = ['ST225', 'ST227', 'ST229', 'ST242', 'ST325', 'ST327', 'ST330', 'ST429']
-    
+
     table = doc.add_table(rows=1, cols=len(all_rooms) + 1)
     table.style = 'Table Grid'
     hdr_cells = table.rows[0].cells
     hdr_cells[0].width = Inches(1.0)
-    
+
     # Table Header Content with colored legend
     p_hdr_legend = hdr_cells[0].paragraphs[0]
     p_hdr_legend.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -200,7 +222,6 @@ def create_room_use_chart(room_schedule):
     font_g_hdr.size = Pt(9)
     font_g_hdr.bold = True
     font_g_hdr.color.rgb = RGBColor(0, 128, 0)
-
 
     for i, col_name in enumerate(all_rooms, 1):
         p_hdr = hdr_cells[i].paragraphs[0]
@@ -220,12 +241,12 @@ def create_room_use_chart(room_schedule):
         run_day.font.name = 'Times New Roman'
         run_day.font.size = Pt(20)
         run_day.bold = True
-        
+
         for j, room_name in enumerate(all_rooms, 1):
             val = room_schedule.get(day, {}).get(room_name, [])
             para = row_cells[j].paragraphs[0]
             para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            
+
             # Set vertical alignment
             morning = [v for v in val if v['IsMorning']]
             afternoon = [v for v in val if not v['IsMorning']]
@@ -235,16 +256,16 @@ def create_room_use_chart(room_schedule):
                 row_cells[j].vertical_alignment = WD_ALIGN_VERTICAL.TOP
             else:
                 row_cells[j].vertical_alignment = WD_ALIGN_VERTICAL.CENTER
-            
+
             if val:
                 for idx, v in enumerate(val):
                     if idx > 0: para.add_run("\n\n")
-                    
+
                     begin = format_time_condensed(v['Begin'])
                     end = format_time_condensed(v['End'])
                     title = abbreviate_title(v['Title'])
                     text = f"{begin}-{end}\n{v['Course']}\n{title}\n{v['Instructor']}"
-                    
+
                     run = para.add_run(text)
                     font = run.font
                     font.name = 'Times New Roman'
@@ -252,6 +273,7 @@ def create_room_use_chart(room_schedule):
                     font.size = Pt(9)
                     font.color.rgb = RGBColor(0, 0, 255) if v['IsMorning'] else RGBColor(0, 128, 0)
     return doc
+
 
 # --- Streamlit App UI ---
 st.set_page_config(page_title="Bio Room Use Chart Generator", layout="wide")
@@ -277,9 +299,10 @@ if uploaded_file is not None:
                     mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 )
             else:
-                st.warning("Could not generate a chart. Please check that your file contains the correct data and column headers.")
+                st.warning(
+                    "Could not generate a chart. Please check that your file contains the correct data and column headers.")
 
-st.markdown("---") 
+st.markdown("---")
 st.header("How to Use This App")
 template_csv = """SUBJ,CRSE #,SEC #,TITLE,ATTRIBUTE,UNITS,M,T,W,R,F,BEGIN,END,BLDG,ROOM,ENROLLMENT,LAST NAME,FIRST NAME
 """
@@ -296,4 +319,3 @@ st.markdown("""
 **Step 4: Download Your Chart**
 - If successful, a blue **"Download Word Document"** button will appear. Click it to save your chart.
 """)
-
