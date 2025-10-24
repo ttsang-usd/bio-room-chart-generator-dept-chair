@@ -359,10 +359,11 @@ st.markdown(f"""
 
 **Step 3: Upload Your File**
 - Use the uploader at the top of the page to upload your file.
-- If you get an error message, ensure that your file contains all the data required in the Room_Chart_Template.csv. 
+- If you get an error message, ensure that your file contains all the data required in the `Room_Chart_Template.csv`. 
 
 **Step 4: Generate and Download**
 - Click the **"Generate Room Chart"** button.
 - Once generated, click the **"Download Word Document"** button to download the room chart.
 """)
+
 
