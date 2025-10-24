@@ -273,7 +273,7 @@ def create_room_use_chart(room_schedule):
 
 # --- Streamlit App UI ---
 st.set_page_config(page_title="Bio Room Use Chart Generator", layout="wide")
-st.title("Bio Room Use Chart Generator for Dept Chair")
+st.title(" :memo: Bio Room Use Chart Generator for Dept Chair")
 st.write("This tool converts a class schedule into a Room Use Chart.")
 
 # Define the new required columns based on the new template
@@ -344,7 +344,7 @@ st.header("How to Use This App")
 # Updated template CSV string
 template_csv = "SUBJ,CRSE #,TITLE,M,T,W,R,F,BEGIN,END,BLDG,ROOM,LAST NAME,FIRST NAME\n"
 
-st.markdown("**Step 1: Get the Template**\n- Click the button below to download the required template.")
+st.markdown("**Step 1: Get the Template**\n- Download the required template below.")
 st.download_button(
     label="Download Template CSV", 
     data=template_csv, 
@@ -353,15 +353,16 @@ st.download_button(
 )
 st.markdown(f"""
 **Step 2: Prepare Your Data**
-- Open the downloaded template (`Room_Chart_Template.csv`) in Excel or any spreadsheet software.
-- **Crucial:** Copy your class schedule data into the appropriate columns. The column headers **must exactly match** the template:
-  `{', '.join(REQUIRED_COLUMNS)}`
+- Open the downloaded template (`Room_Chart_Template.csv`) in Excel.
+- :exclamation: **Crucial:** Copy your class schedule data into the appropriate columns. Do NOT change any column headers.
+- Save the file as a .xlsx or .csv file. 
 
 **Step 3: Upload Your File**
-- Save your edited file and upload it using the uploader at the top of the page.
-- If the file is valid, you'll see a success message.
+- Use the uploader at the top of the page to upload your file.
+- If you get an error message, ensure that your file contains all the data required in the Room_Chart_Template.csv. 
 
 **Step 4: Generate and Download**
 - Click the **"Generate Room Chart"** button.
-- Once generated, the **"Download Word Document"** button will appear.
+- Once generated, click the **"Download Word Document"** button to download the room chart.
 """)
+
