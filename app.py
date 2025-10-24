@@ -273,13 +273,13 @@ def create_room_use_chart(room_schedule):
 
 # --- Streamlit App UI ---
 st.set_page_config(page_title="Bio Room Use Chart Generator", layout="wide")
-st.title(" :memo: Bio Room Use Chart Generator for Dept Chair")
+st.title(":memo: Bio Room Use Chart Generator for Dept Chair")
 st.write("This tool converts a class schedule into a Room Use Chart.")
 
-# Define the new required columns based on the new template
+# Define the original required columns based on the original template
 REQUIRED_COLUMNS = [
-    'SUBJ', 'CRSE #', 'TITLE', 'M', 'T', 'W', 'R', 'F', 
-    'BEGIN', 'END', 'BLDG', 'ROOM', 'LAST NAME', 'FIRST NAME'
+    'SUBJ', 'CRSE #', 'SEC #', 'TITLE', 'ATTRIBUTE', 'UNITS', 'M', 'T', 'W', 'R', 'F', 
+    'BEGIN', 'END', 'BLDG', 'ROOM', 'ENROLLMENT', 'LAST NAME', 'FIRST NAME'
 ]
 
 st.header("Upload Your Schedule File")
@@ -320,7 +320,7 @@ if st.session_state.file_valid and st.session_state.chart_data is None:
             room_schedule = process_schedule_data(st.session_state.df_loaded)
             if room_schedule:
                 doc = create_room_use_chart(room_schedule)
-                bio = io.BytesIO()
+                bio = io.BytesO()
                 doc.save(bio)
                 st.session_state.chart_data = bio.getvalue()
                 st.success("Chart generated!")
@@ -341,14 +341,14 @@ if st.session_state.chart_data is not None:
 st.markdown("---")
 st.header("How to Use This App")
 
-# Updated template CSV string
-template_csv = "SUBJ,CRSE #,TITLE,M,T,W,R,F,BEGIN,END,BLDG,ROOM,LAST NAME,FIRST NAME\n"
+# Updated template CSV string to match the original template
+template_csv = "SUBJ,CRSE #,SEC #,TITLE,ATTRIBUTE,UNITS,M,T,W,R,F,BEGIN,END,BLDG,ROOM,ENROLLMENT,LAST NAME,FIRST NAME\n"
 
-st.markdown("**Step 1: Get the Template**\n- Download the required template below.")
+st.markdown("**Step 1: Get the Template**\n- Click the button below to download the required template.")
 st.download_button(
     label="Download Template CSV", 
     data=template_csv, 
-    file_name="Room_Chart_Template.csv", 
+    file_name="Template_Schedule.csv", 
     mime="text/csv"
 )
 st.markdown(f"""
@@ -365,5 +365,4 @@ st.markdown(f"""
 - Click the **"Generate Room Chart"** button.
 - Once generated, click the **"Download Word Document"** button to download the room chart.
 """)
-
 
