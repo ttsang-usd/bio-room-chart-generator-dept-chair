@@ -60,7 +60,6 @@ def abbreviate_title(title):
         'Lab': ''
     }
     # Iterate through keys sorted by length (longest first) to handle overlaps
-    # e.g., ensures "Anatomy & Physiology II" is replaced before "Anatomy & Physiology"
     for old in sorted(replacements, key=len, reverse=True):
         new = replacements[old]
         title = title.replace(old, new)
@@ -112,45 +111,42 @@ def get_day_of_week(row):
     days = []
     for day_char, day_full in [('M', 'Monday'), ('T', 'Tuesday'), ('W', 'Wednesday'), ('R', 'Thursday'),
                                ('F', 'Friday')]:
-        if str(row.get(day_char)).strip() == day_char:
+        # Check if the column exists and if its value matches the day_char
+        if day_char in row and str(row.get(day_char)).strip() == day_char:
             days.append(day_full)
     return days
 
 
 def process_schedule_data(df):
+    """
+    Processes the loaded DataFrame into a room schedule dictionary.
+    Assumes column validation has already happened.
+    """
     room_schedule = {}
-    required_columns = ['BLDG', 'ROOM', 'BEGIN', 'END', 'SUBJ', 'CRSE #', 'TITLE', 'LAST NAME', 'M', 'T', 'W', 'R', 'F']
-
-    missing_cols = [col for col in required_columns if col not in df.columns]
-    if missing_cols:
-        st.error(f"The uploaded file is missing the following required columns: {', '.join(missing_cols)}")
-        return None
-
+    
+    # Drop rows where essential data for scheduling is missing
     df_cleaned = df.dropna(subset=['BLDG', 'ROOM', 'BEGIN', 'END'])
 
-    # --- START: Bug Fix ---
     # The .copy() prevents a SettingWithCopyWarning
     df_cleaned = df_cleaned.copy() 
     
-    # Strip whitespace from key columns that will be used as strings.
-    # This was the cause of the bug: " 320H" and "SCST " / " 227"
-    # were not being processed correctly.
+    # Strip whitespace from key columns
     strip_cols = ['BLDG', 'ROOM', 'SUBJ', 'CRSE #', 'LAST NAME', 'M', 'T', 'W', 'R', 'F']
     for col in strip_cols:
         if col in df_cleaned.columns:
+            # Ensure data is string type before stripping
             df_cleaned[col] = df_cleaned[col].astype(str).str.strip()
-    # --- END: Bug Fix ---
 
-    df_cleaned['Course'] = df_cleaned['SUBJ'] + df_cleaned['CRSE #'] # We can now directly concatenate
+    df_cleaned['Course'] = df_cleaned['SUBJ'] + df_cleaned['CRSE #']
     df_cleaned['Instructor'] = df_cleaned['LAST NAME'].apply(correct_instructor_name)
     df_cleaned['Days'] = df_cleaned.apply(get_day_of_week, axis=1)
 
     for _, row in df_cleaned.iterrows():
         try:
-            # This logic will now work, as "SCST " is "SCST" and " 227" is "227"
             room_name = f"{row['BLDG'].replace('SCST', 'ST')}{int(float(row['ROOM']))}"
         except (ValueError, TypeError):
             continue
+        
         begin_time = parse_time(row['BEGIN'])
         if begin_time is None: continue
 
@@ -189,7 +185,7 @@ def create_room_use_chart(room_schedule):
         sec.left_margin = Inches(0.5)
         sec.right_margin = Inches(0.5)
 
-    # Title (as a formatted paragraph to avoid underline)
+    # Title
     p_title = doc.add_paragraph()
     p_title.alignment = WD_ALIGN_PARAGRAPH.CENTER
     run_title = p_title.add_run('Room Use Chart for the Biology Laboratories')
@@ -207,7 +203,7 @@ def create_room_use_chart(room_schedule):
     hdr_cells = table.rows[0].cells
     hdr_cells[0].width = Inches(1.0)
 
-    # Table Header Content with colored legend
+    # Table Header Content
     p_hdr_legend = hdr_cells[0].paragraphs[0]
     p_hdr_legend.alignment = WD_ALIGN_PARAGRAPH.CENTER
     run_b_hdr = p_hdr_legend.add_run('B=Morning\n')
@@ -279,43 +275,93 @@ def create_room_use_chart(room_schedule):
 st.set_page_config(page_title="Bio Room Use Chart Generator", layout="wide")
 st.title("Bio Room Use Chart Generator for Dept Chair")
 st.write("This tool converts a class schedule into a Room Use Chart.")
+
+# Define the new required columns based on the new template
+REQUIRED_COLUMNS = [
+    'SUBJ', 'CRSE #', 'TITLE', 'M', 'T', 'W', 'R', 'F', 
+    'BEGIN', 'END', 'BLDG', 'ROOM', 'LAST NAME', 'FIRST NAME'
+]
+
 st.header("Upload Your Schedule File")
 uploaded_file = st.file_uploader("", type=['csv', 'xlsx', 'xls'], label_visibility="collapsed")
 
+# Initialize session state variables
+if 'df_loaded' not in st.session_state:
+    st.session_state.df_loaded = None
+if 'file_valid' not in st.session_state:
+    st.session_state.file_valid = False
+if 'chart_data' not in st.session_state:
+    st.session_state.chart_data = None
+if 'last_uploaded_filename' not in st.session_state:
+    st.session_state.last_uploaded_filename = None
+
 if uploaded_file is not None:
-    with st.spinner('Processing your file...'):
-        df = load_schedule_data(uploaded_file)
-        if df is not None:
-            room_schedule = process_schedule_data(df)
+    # Check if a new file has been uploaded
+    if uploaded_file.name != st.session_state.last_uploaded_filename:
+        st.session_state.last_uploaded_filename = uploaded_file.name
+        st.session_state.df_loaded = load_schedule_data(uploaded_file)
+        st.session_state.file_valid = False # Reset validation
+        st.session_state.chart_data = None # Reset generated chart
+        
+        if st.session_state.df_loaded is not None:
+            # Validate the columns
+            missing_cols = [col for col in REQUIRED_COLUMNS if col not in st.session_state.df_loaded.columns]
+            if missing_cols:
+                st.error(f"The uploaded file is missing the following required columns: {', '.join(missing_cols)}")
+                st.session_state.file_valid = False
+            else:
+                st.success("File processed successfully! Click the button below to generate your chart.")
+                st.session_state.file_valid = True
+
+# Show the "Generate" button only if the file is valid and chart isn't generated
+if st.session_state.file_valid and st.session_state.chart_data is None:
+    if st.button("Generate Room Chart"):
+        with st.spinner('Generating your chart...'):
+            room_schedule = process_schedule_data(st.session_state.df_loaded)
             if room_schedule:
-                st.success("File processed successfully! Your document is ready for download.")
                 doc = create_room_use_chart(room_schedule)
                 bio = io.BytesIO()
                 doc.save(bio)
-                st.download_button(
-                    label="Download Word Document",
-                    data=bio.getvalue(),
-                    file_name=f"Room_Use_Chart_{datetime.now().strftime('%Y%m%d')}.docx",
-                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                )
+                st.session_state.chart_data = bio.getvalue()
+                st.success("Chart generated!")
             else:
                 st.warning(
-                    "Could not generate a chart. Please check that your file contains the correct data and column headers.")
+                    "Could not generate a chart. Please check that your file contains the correct data.")
+                st.session_state.chart_data = None
+
+# Show the "Download" button only if the chart data exists
+if st.session_state.chart_data is not None:
+    st.download_button(
+        label="Download Word Document",
+        data=st.session_state.chart_data,
+        file_name=f"Room_Use_Chart_{datetime.now().strftime('%Y%m%d')}.docx",
+        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    )
 
 st.markdown("---")
 st.header("How to Use This App")
-template_csv = """SUBJ,CRSE #,SEC #,TITLE,ATTRIBUTE,UNITS,M,T,W,R,F,BEGIN,END,BLDG,ROOM,ENROLLMENT,LAST NAME,FIRST NAME
-"""
+
+# Updated template CSV string
+template_csv = "SUBJ,CRSE #,TITLE,M,T,W,R,F,BEGIN,END,BLDG,ROOM,LAST NAME,FIRST NAME\n"
+
 st.markdown("**Step 1: Get the Template**\n- Click the button below to download the required template.")
-st.download_button(label="Download Template CSV", data=template_csv, file_name="Template_Schedule.csv", mime="text/csv")
-st.markdown("""
+st.download_button(
+    label="Download Template CSV", 
+    data=template_csv, 
+    file_name="Room_Chart_Template.csv", 
+    mime="text/csv"
+)
+st.markdown(f"""
 **Step 2: Prepare Your Data**
-- Open the downloaded template (`Template_Schedule.csv`) in Excel or any spreadsheet software.
-- **Crucial:** Copy your class schedule data into the appropriate columns. The column headers **must exactly match** the template.
+- Open the downloaded template (`Room_Chart_Template.csv`) in Excel or any spreadsheet software.
+- **Crucial:** Copy your class schedule data into the appropriate columns. The column headers **must exactly match** the template:
+  `{', '.join(REQUIRED_COLUMNS)}`
 
 **Step 3: Upload Your File**
 - Save your edited file and upload it using the uploader at the top of the page.
+- If the file is valid, you'll see a success message.
 
-**Step 4: Download Your Chart**
-- If successful, a blue **"Download Word Document"** button will appear. Click it to save your chart.
+**Step 4: Generate and Download**
+- Click the **"Generate Room Chart"** button.
+- Once generated, the **"Download Word Document"** button will appear.
 """)
