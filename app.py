@@ -354,7 +354,7 @@ st.download_button(
 st.markdown(f"""
 **Step 2: Prepare Your Data**
 - Open the downloaded template (`Room_Chart_Template.csv`) in Excel.
-- :exclamation: **Crucial:** Copy your class schedule data into the appropriate columns. Do NOT change any column headers.
+- :exclamation:**Crucial:** Copy your class schedule data into the appropriate columns. Do NOT change any column headers.:exclamation:
 - Save the file as a .xlsx or .csv file. 
 
 **Step 3: Upload Your File**
@@ -365,4 +365,5 @@ st.markdown(f"""
 - Click the **"Generate Room Chart"** button.
 - Once generated, click the **"Download Word Document"** button to download the room chart.
 """)
+
 
