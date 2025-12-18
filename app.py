@@ -99,7 +99,10 @@ def load_schedule_data(uploaded_file):
 def parse_time(time_str):
     if pd.isna(time_str) or time_str == '': return None
     try:
-        time_str = str(time_str).strip().zfill(4)
+        # First convert to float, then to int to remove any ".0" decimals
+        time_val = int(float(time_str))
+        # Now convert to string and pad with zeros
+        time_str = str(time_val).strip().zfill(4)
         hours = int(time_str[:-2])
         minutes = int(time_str[-2:])
         return hours * 60 + minutes
