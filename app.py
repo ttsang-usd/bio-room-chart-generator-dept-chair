@@ -123,13 +123,13 @@ def process_schedule_data(df):
     Assumes column validation has already happened.
     """
     room_schedule = {}
-    
+
     # Drop rows where essential data for scheduling is missing
     df_cleaned = df.dropna(subset=['BLDG', 'ROOM', 'BEGIN', 'END'])
 
     # The .copy() prevents a SettingWithCopyWarning
-    df_cleaned = df_cleaned.copy() 
-    
+    df_cleaned = df_cleaned.copy()
+
     # Strip whitespace from key columns
     strip_cols = ['BLDG', 'ROOM', 'SUBJ', 'CRSE #', 'LAST NAME', 'M', 'T', 'W', 'R', 'F']
     for col in strip_cols:
@@ -143,10 +143,22 @@ def process_schedule_data(df):
 
     for _, row in df_cleaned.iterrows():
         try:
-            room_name = f"{row['BLDG'].replace('SCST', 'ST')}{int(float(row['ROOM']))}"
+            # --- FIX START ---
+            # Clean the BLDG column. If it contains 'SCST' (even if messy like "SCST ``227"),
+            # normalize it to 'SCST'.
+            bldg_raw = str(row['BLDG']).strip()
+            if 'SCST' in bldg_raw:
+                bldg_clean = 'SCST'
+            else:
+                bldg_clean = bldg_raw
+
+            # Construct room name using the cleaned building variable
+            room_name = f"{bldg_clean.replace('SCST', 'ST')}{int(float(row['ROOM']))}"
+            # --- FIX END ---
+
         except (ValueError, TypeError):
             continue
-        
+
         begin_time = parse_time(row['BEGIN'])
         if begin_time is None: continue
 
@@ -273,13 +285,13 @@ def create_room_use_chart(room_schedule):
 
 # --- Streamlit App UI ---
 st.set_page_config(page_title="Bio Room Use Chart Generator", layout="wide")
-st.title(":memo: Bio Room Use Chart Generator for Dept Chair")
+st.title(" :memo: Bio Room Use Chart Generator for Dept Chair")
 st.write("This tool converts a class schedule into a Room Use Chart.")
 
-# Define the original required columns based on the original template
+# Define the new required columns based on the new template
 REQUIRED_COLUMNS = [
-    'SUBJ', 'CRSE #', 'SEC #', 'TITLE', 'ATTRIBUTE', 'UNITS', 'M', 'T', 'W', 'R', 'F', 
-    'BEGIN', 'END', 'BLDG', 'ROOM', 'ENROLLMENT', 'LAST NAME', 'FIRST NAME'
+    'SUBJ', 'CRSE #', 'TITLE', 'M', 'T', 'W', 'R', 'F',
+    'BEGIN', 'END', 'BLDG', 'ROOM', 'LAST NAME', 'FIRST NAME'
 ]
 
 st.header("Upload Your Schedule File")
@@ -300,9 +312,9 @@ if uploaded_file is not None:
     if uploaded_file.name != st.session_state.last_uploaded_filename:
         st.session_state.last_uploaded_filename = uploaded_file.name
         st.session_state.df_loaded = load_schedule_data(uploaded_file)
-        st.session_state.file_valid = False # Reset validation
-        st.session_state.chart_data = None # Reset generated chart
-        
+        st.session_state.file_valid = False  # Reset validation
+        st.session_state.chart_data = None  # Reset generated chart
+
         if st.session_state.df_loaded is not None:
             # Validate the columns
             missing_cols = [col for col in REQUIRED_COLUMNS if col not in st.session_state.df_loaded.columns]
@@ -341,14 +353,14 @@ if st.session_state.chart_data is not None:
 st.markdown("---")
 st.header("How to Use This App")
 
-# Updated template CSV string to match the original template
-template_csv = "SUBJ,CRSE #,SEC #,TITLE,ATTRIBUTE,UNITS,M,T,W,R,F,BEGIN,END,BLDG,ROOM,ENROLLMENT,LAST NAME,FIRST NAME\n"
+# Updated template CSV string
+template_csv = "SUBJ,CRSE #,TITLE,M,T,W,R,F,BEGIN,END,BLDG,ROOM,LAST NAME,FIRST NAME\n"
 
-st.markdown("**Step 1: Get the Template**\n- Click the button below to download the required template.")
+st.markdown("**Step 1: Get the Template**\n- Download the required template below.")
 st.download_button(
-    label="Download Template CSV", 
-    data=template_csv, 
-    file_name="Template_Schedule.csv", 
+    label="Download Template CSV",
+    data=template_csv,
+    file_name="Room_Chart_Template.csv",
     mime="text/csv"
 )
 st.markdown(f"""
@@ -359,12 +371,10 @@ st.markdown(f"""
 
 **Step 3: Upload Your File**
 - Use the uploader at the top of the page to upload your file.
-- If you get an error message, ensure that your file contains all the data required in the `Room_Chart_Template.csv`. 
+- If you get an error message, ensure that your file contains all the data required in the Room_Chart_Template.csv. 
 
 **Step 4: Generate and Download**
 - Click the **"Generate Room Chart"** button.
 - Once generated, click the **"Download Word Document"** button to download the room chart.
 """)
-
-
 
