@@ -57,7 +57,8 @@ def abbreviate_title(title):
         'Life Changing Biology': 'Life Change Bio',
         'Immunology': 'Immuno',
         'Laboratory': '',
-        'Lab': ''
+        'Lab': '',
+        'lab': ''
     }
     # Iterate through keys sorted by length (longest first) to handle overlaps
     for old in sorted(replacements, key=len, reverse=True):
@@ -373,7 +374,7 @@ st.markdown(f"""
 - Save the file as a .xlsx or .csv file. 
 
 **Step 3: Upload Your File**
-- Use the uploader at the top of the page to upload your file.
+- Use the file uploader near the top of the page to upload your file.
 - If you get an error message, ensure that your file contains all the data required in the Room_Chart_Template.csv. 
 
 **Step 4: Generate and Download**
